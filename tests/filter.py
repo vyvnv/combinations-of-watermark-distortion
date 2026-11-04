@@ -31,7 +31,7 @@ def run(filter, path_source, path_output):
 
     ffmpeg_exe = "ffmpeg"
     if "unsharp" in filter:
-        ffmpeg_exe = ffmpeg_unsharp_path
+        ffmpeg_exe = "ffmpeg"
 
     subprocess.call([ffmpeg_exe, "-y", "-i", path_source, "-vf", filter, path_output], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

@@ -114,4 +114,6 @@ def convert_to_zscore(watermark, watermark_name, embedding_level, filter_name, s
 
 if __name__ == "__main__":
     embedding_level = 5
-#    calc_correlations(dct_watermark, "dct_watermark", embedding_level, "")
+
+    calc_correlations(dct_watermark, "dct_watermark", embedding_level, "", "")
+    #calc_correlations(dct_watermark, "dct_watermark", embedding_level, "blur", "")

@@ -1,7 +1,7 @@
+
 import subprocess
 
-dct_watermark_exe = "D:/projects/watermarks/project/apps/RelWithDebInfo/dct_watermark.exe"
-
+dct_watermark_exe = "C:/Users/pryanik/6th_year/combinations-of-watermark-distortion/bin/dct_watermark.exe"
 dct_skip = 16
 
 #correlation_type:
@@ -27,12 +27,5 @@ def get_correlation(path, path_reference):
 
     return correlcation
 
-if __name__ == "__main__":
-    gen_reference("agriculture-hd.jpg", "reference.bmp")
-    embed("agriculture-hd.jpg", "reference.bmp", "watermarked.png", 10)
 
-    print("Normalized Correlation:")
-    print(get_correlation("watermarked.png", "reference.bmp", 1))
-    print(get_correlation("agriculture-hd.jpg", "reference.bmp", 1))
-    print(detect_threshold("watermarked.png", "reference.bmp", 1, 0.01))
-    print(detect_threshold("agriculture-hd.jpg", "reference.bmp", 1, 0.01))
+

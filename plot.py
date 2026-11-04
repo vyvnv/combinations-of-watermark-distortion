@@ -5,71 +5,98 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 
 
-
-if len(sys.argv) != 6:
-    print("`zscores_non_sharped.csv`, `zscores_sharped.csv`, `zscores_min.csv` `zscores_max.csv` `zscores_sum.csv` arguments expected")
+if len(sys.argv) != 5:
+    print("arguments expected correlations_no_filter.csv correlations_blur.csv psnr_no_filter.csv psnr_blur.csv")
     exit(1)
 
 positive = []
 negative = []
-positiveSharped = []
-negativeSharped = []
-positiveMin = []
-negativeMin = []
-positiveMax = []
-negativeMax = []
-positiveSum = []
-negativeSum = []
+positiveFiltered = []
+negativeFiltered = []
+
+psnr = []
+psnrFiltered = []
+
+files = []
+filesFiltered = []
+psnrFiles = []
+psnrFilesFiltered = []
+
 
 with open(sys.argv[1]) as csvfile:
     reader = csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL)
     for row in reader:
+        files.append(row[0])
         positive.append(float(row[1]))
         negative.append(float(row[2]))
 
 with open(sys.argv[2]) as csvfile:
     reader = csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL)
     for row in reader:
-        positiveSharped.append(float(row[1]))
-        negativeSharped.append(float(row[2]))
+        filesFiltered.append(row[0])
+        positiveFiltered.append(float(row[1]))
+        negativeFiltered.append(float(row[2]))
 
 with open(sys.argv[3]) as csvfile:
     reader = csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL)
     for row in reader:
-        positiveMin.append(float(row[1]))
-        negativeMin.append(float(row[2]))
+        psnrFiles.append(row[0])
+        psnr.append(float(row[1]))
+
 
 with open(sys.argv[4]) as csvfile:
     reader = csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL)
     for row in reader:
-        positiveMax.append(float(row[1]))
-        negativeMax.append(float(row[2]))
+        psnrFilesFiltered.append(row[0])
+        psnrFiltered.append(float(row[1]))
 
-with open(sys.argv[5]) as csvfile:
-    reader = csv.reader(csvfile, quoting=csv.QUOTE_MINIMAL)
-    for row in reader:
-        positiveSum.append(float(row[1]))
-        negativeSum.append(float(row[2]))
 
+# Проверка данных
+
+if len(files) != len(set(files)) or len(filesFiltered) != len(set(filesFiltered)):
+    raise ValueError("повторяющиеся изображения")
+
+if set(files) != set(filesFiltered) or set(files) != set(psnrFiles) or set(files) != set(psnrFilesFiltered):
+    raise ValueError("изображения в CSV не совпадают")
+
+if not np.all(np.isfinite(positive + negative + positiveFiltered + negativeFiltered + psnr + psnrFiltered)):
+    raise ValueError("обнаружены некорректные числовые значения")
+
+
+# ROC без фильтрации
 y_true = np.concatenate([np.ones_like(positive), np.zeros_like(negative)])
 y_scores = np.concatenate([positive, negative])
 fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+auc_no_filter = auc(fpr, tpr)
 
-y_true_sharped = np.concatenate([np.ones_like(positiveSharped), np.zeros_like(negativeSharped)])
-y_scores_sharped = np.concatenate([positiveSharped, negativeSharped])
-fpr_sharped, tpr_sharped, thresholds_filtered = roc_curve(y_true_sharped, y_scores_sharped)
+# ROC после фильтрации
+y_true_filtered = np.concatenate([np.ones_like(positiveFiltered), np.zeros_like(negativeFiltered)])
+y_scores_filtered = np.concatenate([positiveFiltered, negativeFiltered])
+fpr_filtered, tpr_filtered, thresholds_filtered = roc_curve(y_true_filtered, y_scores_filtered)
+auc_filtered = auc(fpr_filtered, tpr_filtered)
 
-y_true_min = np.concatenate([np.ones_like(positiveMin), np.zeros_like(negativeMin)])
-y_scores_min = np.concatenate([positiveMin, negativeMin])
-fpr_min, tpr_min, thresholds_min = roc_curve(y_true_min, y_scores_min)
 
-y_true_max = np.concatenate([np.ones_like(positiveMax), np.zeros_like(negativeMax)])
-y_scores_max = np.concatenate([positiveMax, negativeMax])
-fpr_max, tpr_max, thresholds_max = roc_curve(y_true_max, y_scores_max)
+# Средний PSNR
+mean_psnr = np.mean(psnr)
+mean_psnr_filtered = np.mean(psnrFiltered)
 
-y_true_sum = np.concatenate([np.ones_like(positiveSum), np.zeros_like(negativeSum)])
-y_scores_sum = np.concatenate([positiveSum, negativeSum])
-fpr_sum, tpr_sum, thresholds_sum = roc_curve(y_true_sum, y_scores_sum)
+
+# Вывод результатов
+print("Без фильтрации:")
+print("Средний PSNR:", mean_psnr)
+print("AUC:", auc_no_filter)
+
+print("После фильтрации:")
+print("Средний PSNR:", mean_psnr_filtered)
+print("AUC:", auc_filtered)
+
+
+with open("experiment_results.csv", "w", newline='', encoding='utf-8-sig') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Фильтр", "Средний PSNR", "AUC"])
+    writer.writerow(["Без фильтрации", mean_psnr, auc_no_filter])
+    writer.writerow(["unsharp=3:3:-0.25:3:3:-0.25", mean_psnr_filtered, auc_filtered])
+
 
 plt.rcParams.update({
     "font.family": "serif",
@@ -80,28 +107,18 @@ plt.rcParams.update({
 
 # === Plot ROC Curve ===
 plt.figure()
-plt.plot(fpr, tpr, label=f'без увеличения резкости', color='#7f7f7f', linestyle=(5, (10, 3)))
-plt.plot(fpr_sharped, tpr_sharped, label=f'с увеличением резкости', color='#d62728', linestyle='--')
-plt.plot(fpr_min, tpr_min, label=f'наименьшее', color='#2ca02c', linestyle='-.')
-plt.plot(fpr_max, tpr_max, label=f'наибольшее', color='#9467bd', linestyle=':')
-plt.plot(fpr_sum, tpr_sum, label=f'сумма', color='#1f77b4', linestyle='-')
+
+plt.plot(fpr, tpr, label=f'без фильтрации (AUC = {auc_no_filter:.4f})', color='#7f7f7f', linestyle='--')
+plt.plot(fpr_filtered, tpr_filtered, label=f'после фильтрации (AUC = {auc_filtered:.4f})', color='#d62728', linestyle='-')
 
 plt.xlabel('Вероятность ложного обнаружения')
 plt.ylabel('Вероятность успешного обнаружения')
 
-#plt.plot(fpr, tpr, label=f'without pre-filtering', color='#7f7f7f', linestyle=(5, (10, 3)))
-#plt.plot(fpr_sharped, tpr_sharped, label=f'with pre-filtering', color='#d62728', linestyle='--')
-#plt.plot(fpr_min, tpr_min, label=f'min', color='#2ca02c', linestyle='-.')
-#plt.plot(fpr_max, tpr_max, label=f'max', color='#9467bd', linestyle=':')
-#plt.plot(fpr_sum, tpr_sum, label=f'sum', color='#1f77b4', linestyle='-')
-
-#plt.xlabel('FP probability')
-#plt.ylabel('TP probability')
-
 plt.legend(loc='lower right')
 plt.grid(True)
 
-plt.xlim([0.0, 0.6])   # zoom in on very low FPR range
-plt.ylim([0.8, 1.0])  # zoom in on high TPR range
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.0])
 
+plt.savefig("roc_comparison.png", dpi=300, bbox_inches='tight')
 plt.show()

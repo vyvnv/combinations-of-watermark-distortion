@@ -1,0 +1,6 @@
+*.jpg
+*.csv/
+*.bmp
+*.png
+*check_corr.py
+/bin/

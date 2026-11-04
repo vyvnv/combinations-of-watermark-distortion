@@ -146,5 +146,6 @@ def mean_wmaf(embedding_level):
 
 if __name__ == "__main__":
     embedding_level = 5
-    embed_watermarks(dct_watermark, "dct_watermark", embedding_level, "images")
+    embed_watermarks(dct_watermark, embedding_level, "images")
+    create_references_wo_embedding(dct_watermark, embedding_level,"images")
 #    remove_files(dct_watermark, "dct_watermark", embedding_level)
