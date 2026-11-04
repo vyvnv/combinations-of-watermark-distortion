@@ -1,6 +1,8 @@
 *.jpg
-*.csv/
+*.csv
 *.bmp
 *.png
-*check_corr.py
 /bin/
+/check_corr.py
+__pycache__/
+*.pyc
