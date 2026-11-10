@@ -1,39 +1,63 @@
-import calc_correlations
-import embed_watermarks
-import filter_watermarks
+import csv
+from pathlib import Path
+
+from sklearn.metrics import roc_auc_score
 
 import config
+import embed_watermarks
+import filter_watermarks
+import calc_correlations
 
-embed_watermarks.embed_watermarks(config.watermarks[0], config.level, "images")
-embed_watermarks.create_references_wo_embedding(config.watermarks[0], config.level, "images")
 
-mean_psnr = embed_watermarks.mean_psnr(config.level)
-mean_wmaf = embed_watermarks.mean_wmaf(config.level)
-print("\tMean PSNR: %.4f" % mean_psnr)
-print("\tMean WMAF: %.4f" % mean_wmaf)
+def calculate_auc(correlations_csv):
+    positive = []
+    negative = []
 
-for watermark, watermark_name in zip(config.watermarks, config.watermark_names):
-    print ("%s" % (watermark_name))
-    calc_correlations.calc_correlations(watermark, watermark_name, config.level, None, "evaluation")
-    distibution =  calc_correlations.calc_distibution(watermark, watermark_name, config.level, None, "evaluation")
-    print ("\tmean(zero) = %.10f \n\tstd_dev(zero) = %.10f \n\tmean(one) = %.10f \n\tstd_dev(one) = %.10f" % (distibution[0], distibution[1], distibution[2], distibution[3]))
+    with open(correlations_csv, newline="", encoding="utf-8-sig") as csvfile:
+        for _, embedded, not_embedded in csv.reader(csvfile):
+            positive.append(float(embedded))
+            negative.append(float(not_embedded))
 
+    labels = [1] * len(positive) + [0] * len(negative)
+    scores = positive + negative
+    return roc_auc_score(labels, scores)
+
+
+watermark = config.watermarks
+watermark_name = config.watermark_name
+level = config.level
+
+embed_watermarks.embed_watermarks(watermark, level, "images")
+embed_watermarks.create_references_wo_embedding(watermark, level, "images")
+
+# Без фильтрации.
+mean_psnr = embed_watermarks.mean_psnr(level)
+calc_correlations.calc_correlations(
+    watermark, watermark_name, level, None, "evaluation"
+)
+correlations_csv = calc_correlations.get_results_file_name(
+    watermark_name, level, None, "evaluation"
+)
+results = [["Без фильтрации", mean_psnr, calculate_auc(correlations_csv)]]
+
+# После каждого воздействия из config.py.
 for filter_name, filter_params in config.filters.items():
-    print("%s" % filter_name)
-    filter_watermarks.filter_watermarks(config.level, filter_name, filter_params)
+    filter_watermarks.filter_watermarks(level, filter_name, filter_params)
+    mean_psnr = filter_watermarks.mean_psnr(filter_name, level)
 
-    mean_psnr = filter_watermarks.mean_psnr(filter_name, config.level)
-    mean_wmaf = filter_watermarks.mean_wmaf(filter_name, config.level)
-    print("\tMean PSNR: %.4f" % mean_psnr)
-    print("\tMean WMAF: %.4f" % mean_wmaf)
+    calc_correlations.calc_correlations(
+        watermark, watermark_name, level, filter_name, "test"
+    )
+    correlations_csv = calc_correlations.get_results_file_name(
+        watermark_name, level, filter_name, "test"
+    )
+    results.append([filter_name, mean_psnr, calculate_auc(correlations_csv)])
 
-    for watermark, watermark_name in zip(config.watermarks, config.watermark_names):
-        print ("\t%s" % (watermark_name))
-        calc_correlations.calc_correlations(watermark, watermark_name, config.level, filter_name, "test")
-        distibution =  calc_correlations.calc_distibution(watermark, watermark_name, config.level, filter_name, "test")
+table_path = Path("correlation_tests") / str(level) / "experiment_results.csv"
 
-        print ("\t\tmean(zero) = %.10f \n\t\tstd_dev(zero) = %.10f \n\t\tmean(one) = %.10f \n\t\tstd_dev(one) = %.10f" % (distibution[0], distibution[1], distibution[2], distibution[3]))
+with table_path.open("w", newline="", encoding="utf-8-sig") as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(["Фильтр", "Средний PSNR", "AUC"])
+    writer.writerows(results)
 
-    filter_watermarks.remove_files(config.level, filter_name)
-
-embed_watermarks.remove_files(config.level)
+print("Таблица сохранена:", table_path)

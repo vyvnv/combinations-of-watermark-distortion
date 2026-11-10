@@ -145,7 +145,7 @@ def mean_wmaf(embedding_level):
     return calc_quality_multithread(embedding_level, wmaf)
 
 if __name__ == "__main__":
-    embedding_level = 5
+    embedding_level = 0.5
     embed_watermarks(dct_watermark, embedding_level, "images")
     create_references_wo_embedding(dct_watermark, embedding_level,"images")
 #    remove_files(dct_watermark, "dct_watermark", embedding_level)
