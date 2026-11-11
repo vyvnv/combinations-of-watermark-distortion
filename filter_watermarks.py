@@ -10,7 +10,7 @@ from tests import filter
 from utils import psnr
 from utils import wmaf
 
-def filter_watermark(embedding_level, input_filename, filter_name, filter_params):
+def filter_watermark(embedding_level, input_filename, filter_name, filter_params, source_folder="watermarked"):
     name_prefix = "correlation_tests/" + "/" + str(embedding_level)
 
     os.makedirs("correlation_tests", exist_ok=True)
@@ -21,13 +21,13 @@ def filter_watermark(embedding_level, input_filename, filter_name, filter_params
     filename = Path(input_filename)
     filename_wo_ext = filename.with_suffix('')
 
-    watermarked_name = name_prefix + "/watermarked/" + str(filename_wo_ext) + ".bmp"
+    watermarked_name = name_prefix + "/" + source_folder + "/" + str(filename_wo_ext) + ".bmp"
     filtered_name = name_prefix + "/" + filter_name + "/" + str(filename_wo_ext) + ".bmp"
 
     filter.run(filter_params, watermarked_name, filtered_name)
 
 
-def filter_watermarks_multithread(embedding_level, filter_name, filter_params):
+def filter_watermarks_multithread(embedding_level, filter_name, filter_params, source_folder="watermarked"):
     max_threads = os.cpu_count();
     if max_threads > 4:
         max_threads -= 4
@@ -38,14 +38,14 @@ def filter_watermarks_multithread(embedding_level, filter_name, filter_params):
     futures = []
     for file in os.listdir(directory):
         filename = os.fsdecode(file)
-        future = threadPool.submit(filter_watermark, embedding_level, filename, filter_name, filter_params)
+        future = threadPool.submit(filter_watermark, embedding_level, filename, filter_name, filter_params, source_folder)
         futures.append(future)
 
     for future in futures:
         future.result()
 
-def filter_watermarks(embedding_level, filter_name, filter_params):
-    filter_watermarks_multithread(embedding_level, filter_name, filter_params)
+def filter_watermarks(embedding_level, filter_name, filter_params, source_folder="watermarked"):
+    filter_watermarks_multithread(embedding_level, filter_name, filter_params, source_folder)
 
 def remove_files(embedding_level, filter_name):
     dir_name = "correlation_tests/" + "/" + str(embedding_level) + "/" + filter_name
@@ -107,7 +107,7 @@ def mean_wmaf(filter_name, embedding_level):
 
 
 if __name__ == "__main__":
-    embedding_level = 5
+    embedding_level = 0.5
    # filter_watermarks(embedding_level, "blur", "unsharp=3:3:-0.25:3:3:-0.25")
 
 #    remove_files(dct_watermark, "dct_watermark", embedding_level, "blur")
