@@ -2,12 +2,12 @@ import csv
 from pathlib import Path
 
 from sklearn.metrics import roc_auc_score
-
+from itertools import permutations
 import config
 import embed_watermarks
 import filter_watermarks
 import calc_correlations
-from itertools import combinations
+
 
 def calculate_auc(correlations_csv):
     positive = []
@@ -40,29 +40,48 @@ correlations_csv = calc_correlations.get_results_file_name(
 )
 results = [["Без фильтрации", mean_psnr, calculate_auc(correlations_csv)]]
 
-prepared = set()
+#Одиночные 
+for filter_name, filter_params in config.filters.items():
+    print(f"Одиночное воздействие: {filter_name}", flush=True)
+    filter_watermarks.filter_watermarks(level, filter_name, filter_params)
+    mean_psnr = filter_watermarks.mean_psnr(filter_name, level)
 
-for first, second in combinations(config.filters, 2):
-    combination = f"pair_stage1__{first}"
-    pair_name = f"pair__{first}__{second}"
+    calc_correlations.calc_correlations(
+        watermark, watermark_name, level, filter_name, "test"
+    )
+    correlations_csv = calc_correlations.get_results_file_name(
+        watermark_name, level, filter_name, "test"
+    )
+    results.append([filter_name, mean_psnr, calculate_auc(correlations_csv)])
 
-    if first not in prepared:
-        filter_watermarks.filter_watermarks_multithread(level, combination, config.filters[first])
-        prepared.add(first)
-
-    filter_watermarks.filter_watermarks_multithread(level, pair_name, config.filters[second], source_folder=combination)
-    mean_psnr = filter_watermarks.mean_psnr(pair_name, level)
-
-    calc_correlations.calc_correlations(watermark, watermark_name, level, pair_name, "test")
-    correlations_csv = calc_correlations.get_results_file_name(watermark_name, level, pair_name, "test")
-    results.append([pair_name, mean_psnr, calculate_auc(correlations_csv)])
-
+#Пары
 table_path = Path("correlation_tests") / str(level) / "experiment_results_pairs.csv"
-
 
 with table_path.open("w", newline="", encoding="utf-8-sig") as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(["Фильтр", "Средний PSNR", "AUC"])
-    writer.writerows(results)
+    writer.writerows(results) 
+    csvfile.flush()
+
+    for first, second in permutations(config.filters, 2):
+        pair_name = f"pair__{first}__{second}"
+        print(f"Двойное воздействие: {first} → {second}", flush=True)
+
+        filter_watermarks.filter_watermarks(
+            level, pair_name, config.filters[second], source_folder=first
+        )
+        mean_psnr = filter_watermarks.mean_psnr(pair_name, level)
+
+        calc_correlations.calc_correlations(
+            watermark, watermark_name, level, pair_name, "test"
+        )
+        correlations_csv = calc_correlations.get_results_file_name(
+            watermark_name, level, pair_name, "test"
+        )
+        auc = calculate_auc(correlations_csv)
+
+        writer.writerow([pair_name, mean_psnr, auc])
+        csvfile.flush()
+        filter_watermarks.remove_files(level, pair_name)
 
 print("Таблица сохранена:", table_path)

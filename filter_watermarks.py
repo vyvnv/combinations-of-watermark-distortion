@@ -16,7 +16,6 @@ def filter_watermark(embedding_level, input_filename, filter_name, filter_params
     os.makedirs("correlation_tests", exist_ok=True)
     os.makedirs(name_prefix, exist_ok=True)
     os.makedirs(name_prefix + "/" + filter_name, exist_ok=True)
-    os.makedirs(name_prefix + "/wo_embedding_" + filter_name, exist_ok=True)
 
     filename = Path(input_filename)
     filename_wo_ext = filename.with_suffix('')
@@ -51,8 +50,6 @@ def remove_files(embedding_level, filter_name):
     dir_name = "correlation_tests/" + "/" + str(embedding_level) + "/" + filter_name
     shutil.rmtree(dir_name)
 
-    dir_name = "correlation_tests/" + "/" + str(embedding_level) + "/wo_embedding_" + filter_name
-    shutil.rmtree(dir_name)
 
 def calc_quality(filter_name, embedding_level, input_filename, metrics):
     name_prefix = "correlation_tests/" + "/" + str(embedding_level)
